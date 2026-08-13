@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>✨ Cute Tetris Game ✨</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Fredoka', cursive, sans-serif;
+            background: linear-gradient(135deg, #ffd1dc 0%, #e0c3fc 50%, #8ec5fc 100%);
+            touch-action: manipulation;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(12px);
+            border: 3px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px 0 rgba(180, 150, 210, 0.37);
+        }
+        .btn-cute {
+            transition: all 0.15s ease;
+            box-shadow: 0 4px 0px rgba(0,0,0,0.15);
+        }
+        .btn-cute:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0px rgba(0,0,0,0.15);
+        }
+        canvas {
+            border-radius: 16px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-2 sm:p-4 text-pink-900 select-none overflow-x-hidden">
+
+    <div class="max-w-md w-full glass-panel rounded-3xl p-4 sm:p-6 flex flex-col items-center relative">
+        
+        <!-- Header -->
+        <div class="text-center mb-3">
+            <h1 class="text-3xl sm:text-4xl font-extrabold text-pink-500 drop-shadow-sm tracking-wider flex items-center justify-center gap-2">
+                <span>🌸</span> Cute Tetris <span>✨</span>
+            </h1>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="flex flex-row items-start justify-center gap-3 sm:gap-4 w-full">
+            
+            <!-- Left Column: Hold & Stats -->
+            <div class="flex flex-col gap-3 w-20 sm:w-24">
+                <div class="bg-white/80 rounded-2xl p-2 text-center border-2 border-pink-200">
+                    <p class="text-xs font-bold text-pink-400 mb-1">HOLD</p>
+                    <canvas id="holdCanvas" width="70" height="70" class="bg-pink-50/50 mx-auto rounded-xl"></canvas>
+                </div>
+
+                <div class="bg-white/80 rounded-2xl p-2 text-center border-2 border-pink-200">
+                    <p class="text-xs font-bold text-pink-400">SCORE</p>
+                    <p id="scoreText" class="text-base sm:text-lg font-black text-pink-600">0</p>
+                </div>
+
+                <div class="bg-white/80 rounded-2xl p-2 text-center border-2 border-pink-200">
+                    <p class="text-xs font-bold text-pink-400">LEVEL</p>
+                    <p id="levelText" class="text-base sm:text-lg font-black text-purple-600">1</p>
+                </div>
+
+                <div class="bg-white/80 rounded-2xl p-2 text-center border-2 border-pink-200">
+                    <p class="text-xs font-bold text-pink-400">LINES</p>
+                    <p id="linesText" class="text-base sm:text-lg font-black text-blue-500">0</p>
+                </div>
+            </div>
+
+            <!-- Middle Column: Main Canvas -->
+            <div class="relative">
+                <canvas id="tetrisCanvas" width="200" height="400" class="bg-white/90 border-4 border-pink-300"></canvas>
+                
+                <!-- Pause / Game Over Overlay -->
+                <div id="overlay" class="absolute inset-0 bg-pink-900/40 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-4 text-center">
+                    <h2 id="overlayTitle" class="text-2xl font-black text-white mb-2 drop-shadow">READY?</h2>
+                    <p id="overlaySub" class="text-xs text-pink-100 mb-4">Click Start to Play! ✨</p>
+                    <button id="startBtn" class="btn-cute bg-pink-400 hover:bg-pink-500 text-white font-black px-6 py-2 rounded-full text-base border-2 border-white">
+                        START 💕
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Column: Next Piece -->
+            <div class="flex flex-col gap-3 w-20 sm:w-24">
+                <div class="bg-white/80 rounded-2xl p-2 text-center border-2 border-pink-200">
+                    <p class="text-xs font-bold text-pink-400 mb-1">NEXT</p>
+                    <canvas id="nextCanvas" width="70" height="70" class="bg-pink-50/50 mx-auto rounded-xl"></canvas>
+                </div>
+
+                <button id="soundToggle" class="bg-white/80 border-2 border-pink-200 text-pink-500 rounded-2xl p-2 text-xs font-bold hover:bg-pink-100 transition">
+                    🔊 SOUND
+                </button>
+            </div>
+        </div>
+
+        <!-- On-Screen Controls for Mobile -->
+        <div class="mt-4 w-full flex flex-col gap-2 sm:hidden">
+            <div class="flex justify-center gap-2">
+                <button id="btnHold" class="btn-cute bg-purple-300 text-purple-800 text-xs font-black py-2 px-4 rounded-xl border border-white">HOLD</button>
+                <button id="btnRotate" class="btn-cute bg-pink-300 text-pink-800 text-xs font-black py-2 px-6 rounded-xl border border-white">ROTATE 🔄</button>
+                <button id="btnDrop" class="btn-cute bg-yellow-300 text-yellow-900 text-xs font-black py-2 px-4 rounded-xl border border-white">DROP ⚡</button>
+            </div>
+            <div class="flex justify-center gap-3">
+                <button id="btnLeft" class="btn-cute bg-sky-200 text-sky-800 font-bold py-3 px-6 rounded-2xl border border-white text-lg">◀</button>
+                <button id="btnDown" class="btn-cute bg-sky-200 text-sky-800 font-bold py-3 px-6 rounded-2xl border border-white text-lg">▼</button>
+                <button id="btnRight" class="btn-cute bg-sky-200 text-sky-800 font-bold py-3 px-6 rounded-2xl border border-white text-lg">▶</button>
+            </div>
+        </div>
+
+        <!-- Desktop Controls Hint -->
+        <div class="hidden sm:block mt-3 text-center text-xs text-pink-600/80">
+            🎹 Arrow Keys: Move/Soft Drop | Up: Rotate | Space: Hard Drop | C: Hold
+        </div>
+    </div>
+
+    <script>
+        // Audio Synthesizer using Web Audio API
+        class CuteSound {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+            playTone(freq, duration = 0.1, type = 'sine') {
+                if (!this.enabled) return;
+                this.init();
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch(e) {}
+            }
+            playMove() { this.playTone(440, 0.05, 'sine'); }
+            playRotate() { this.playTone(587, 0.08, 'triangle'); }
+            playDrop() { this.playTone(330, 0.12, 'sine'); }
+            playClear() {
+                if (!this.enabled) return;
+                [523, 659, 784, 1046].forEach((f, i) => {
+                    setTimeout(() => this.playTone(f, 0.15, 'triangle'), i * 60);
+                });
+            }
+            playGameOver() {
+                if (!this.enabled) return;
+                [400, 350, 300, 250].forEach((f, i) => {
+                    setTimeout(() => this.playTone(f, 0.2, 'sawtooth'), i * 100);
+                });
+            }
+        }
+        const sound = new CuteSound();
+
+        const COLS = 10;
+        const ROWS = 20;
+        const BLOCK_SIZE = 20;
+
+        // Cute Pastel Colors
+        const SHAPES = [
+            [], // Empty
+            { matrix: [[1,1,1,1]], color: '#90e0ef', dark: '#48cae4', eye: true }, // I: Sky
+            { matrix: [[1,0,0],[1,1,1]], color: '#a0c4ff', dark: '#70a5ff', eye: true }, // J: Blue
+            { matrix: [[0,0,1],[1,1,1]], color: '#ffd166', dark: '#f4a261', eye: true }, // L: Orange
+            { matrix: [[1,1],[1,1]], color: '#ffea00', dark: '#ffd000', eye: true }, // O: Yellow
+            { matrix: [[0,1,1],[1,1,0]], color: '#b7e4c7', dark: '#74c69d', eye: true }, // S: Green
+            { matrix: [[0,1,0],[1,1,1]], color: '#e0aaff', dark: '#c77dff', eye: true }, // T: Purple
+            { matrix: [[1,1,0],[0,1,1]], color: '#ffadad', dark: '#ff758f', eye: true }  // Z: Pink
+        ];
+
+        const mainCanvas = document.getElementById('tetrisCanvas');
+        const mainCtx = mainCanvas.getContext('2d');
+        const nextCanvas = document.getElementById('nextCanvas');
+        const nextCtx = nextCanvas.getContext('2d');
+        const holdCanvas = document.getElementById('holdCanvas');
+        const holdCtx = holdCanvas.getContext('2d');
+
+        let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+        let score = 0;
+        let level = 1;
+        let lines = 0;
+        let gameOver = false;
+        let isPaused = true;
+        let dropCounter = 0;
+        let dropInterval = 800;
+        let lastTime = 0;
+
+        let currentPiece = null;
+        let nextPiece = null;
+        let holdPiece = null;
+        let canHold = true;
+
+        let particles = [];
+
+        function createPiece(type) {
+            return {
+                type: type,
+                matrix: SHAPES[type].matrix.map(row => [...row]),
+                x: Math.floor(COLS / 2) - Math.ceil(SHAPES[type].matrix[0].length / 2),
+                y: 0
+            };
+        }
+
+        function getRandomPieceType() {
+            return Math.floor(Math.random() * 7) + 1;
+        }
+
+        function collide(board, piece, offsetX = 0, offsetY = 0) {
+            const m = piece.matrix;
+            for (let r = 0; r < m.length; r++) {
+                for (let c = 0; c < m[r].length; c++) {
+                    if (m[r][c] !== 0) {
+                        const newX = piece.x + c + offsetX;
+                        const newY = piece.y + r + offsetY;
+                        if (newX < 0 || newX >= COLS || newY >= ROWS) return true;
+                        if (newY >= 0 && board[newY][newX] !== 0) return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        function merge(board, piece) {
+            piece.matrix.forEach((row, r) => {
+                row.forEach((value, c) => {
+                    if (value !== 0) {
+                        if (piece.y + r >= 0) {
+                            board[piece.y + r][piece.x + c] = piece.type;
+                        }
+                    }
+                });
+            });
+        }
+
+        function rotate(matrix) {
+            const result = matrix[0].map((_, i) => matrix.map(row => row[i]).reverse());
+            return result;
+        }
+
+        function playerRotate() {
+            if (isPaused || gameOver) return;
+            const original = currentPiece.matrix;
+            currentPiece.matrix = rotate(currentPiece.matrix);
+            let offset = 1;
+            while (collide(grid, currentPiece)) {
+                currentPiece.x += offset;
+                offset = -(offset + (offset > 0 ? 1 : -1));
+                if (offset > currentPiece.matrix[0].length) {
+                    currentPiece.matrix = original;
+                    return;
+                }
+            }
+            sound.playRotate();
+        }
+
+        function playerMove(dir) {
+            if (isPaused || gameOver) return;
+            if (!collide(grid, currentPiece, dir, 0)) {
+                currentPiece.x += dir;
+                sound.playMove();
+            }
+        }
+
+        function playerDrop() {
+            if (isPaused || gameOver) return;
+            if (!collide(grid, currentPiece, 0, 1)) {
+                currentPiece.y++;
+                score += 1;
+            } else {
+                lockPiece();
+            }
+            dropCounter = 0;
+            updateUI();
+        }
+
+        function hardDrop() {
+            if (isPaused || gameOver) return;
+            while (!collide(grid, currentPiece, 0, 1)) {
+                currentPiece.y++;
+                score += 2;
+            }
+            sound.playDrop();
+            lockPiece();
+            dropCounter = 0;
+            updateUI();
+        }
+
+        function doHold() {
+            if (isPaused || gameOver || !canHold) return;
+            if (!holdPiece) {
+                holdPiece = currentPiece.type;
+                currentPiece = createPiece(nextPiece);
+                nextPiece = getRandomPieceType();
+            } else {
+                const temp = holdPiece;
+                holdPiece = currentPiece.type;
+                currentPiece = createPiece(temp);
+            }
+            canHold = false;
+            sound.playRotate();
+            drawPreviews();
+        }
+
+        function lockPiece() {
+            merge(grid, currentPiece);
+            checkLines();
+            currentPiece = createPiece(nextPiece);
+            nextPiece = getRandomPieceType();
+            canHold = true;
+
+            if (collide(grid, currentPiece)) {
+                gameOver = true;
+                isPaused = true;
+                sound.playGameOver();
+                showOverlay("GAME OVER 😿", "Try again!");
+            }
+            drawPreviews();
+        }
+
+        function checkLines() {
+            let cleared = 0;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                if (grid[r].every(cell => cell !== 0)) {
+                    // Create particles across cleared row
+                    for (let c = 0; c < COLS; c++) {
+                        createSparkles((c + 0.5) * BLOCK_SIZE, (r + 0.5) * BLOCK_SIZE);
+                    }
+                    grid.splice(r, 1);
+                    grid.unshift(Array(COLS).fill(0));
+                    cleared++;
+                    r++; // re-check row
+                }
+            }
+            if (cleared > 0) {
+                lines += cleared;
+                const points = [0, 100, 300, 500, 800];
+                score += points[cleared] * level;
+                level = Math.floor(lines / 10) + 1;
+                dropInterval = Math.max(100, 800 - (level - 1) * 70);
+                sound.playClear();
+                updateUI();
+            }
+        }
+
+        function drawBlock(ctx, x, y, type, size = BLOCK_SIZE, isGhost = false) {
+            if (type === 0) return;
+            const shape = SHAPES[type];
+            
+            ctx.save();
+            ctx.translate(x * size, y * size);
+
+            if (isGhost) {
+                ctx.strokeStyle = shape.color;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(2, 2, size - 4, size - 4);
+                ctx.restore();
+                return;
+            }
+
+            // Rounded Block Body
+            const radius = 5;
+            ctx.fillStyle = shape.color;
+            ctx.beginPath();
+            ctx.roundRect(1, 1, size - 2, size - 2, radius);
+            ctx.fill();
+
+            // Inner Soft Highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.beginPath();
+            ctx.roundRect(3, 3, size - 6, (size - 6) / 2, radius / 2);
+            ctx.fill();
+
+            // Cute Eyes (for main piece display)
+            if (shape.eye && size >= 18) {
+                ctx.fillStyle = '#4a4e69';
+                const eyeY = size * 0.45;
+                ctx.beginPath();
+                ctx.arc(size * 0.35, eyeY, 1.8, 0, Math.PI * 2);
+                ctx.arc(size * 0.65, eyeY, 1.8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        function drawGrid() {
+            mainCtx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+
+            // Draw Background Grid Lines
+            mainCtx.strokeStyle = 'rgba(255, 182, 193, 0.2)';
+            mainCtx.lineWidth = 1;
+            for (let r = 0; r <= ROWS; r++) {
+                mainCtx.beginPath();
+                mainCtx.moveTo(0, r * BLOCK_SIZE);
+                mainCtx.lineTo(COLS * BLOCK_SIZE, r * BLOCK_SIZE);
+                mainCtx.stroke();
+            }
+            for (let c = 0; c <= COLS; c++) {
+                mainCtx.beginPath();
+                mainCtx.moveTo(c * BLOCK_SIZE, 0);
+                mainCtx.lineTo(c * BLOCK_SIZE, ROWS * BLOCK_SIZE);
+                mainCtx.stroke();
+            }
+
+            // Draw Locked Grid
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    drawBlock(mainCtx, c, r, grid[r][c]);
+                }
+            }
+
+            // Draw Ghost Piece
+            if (currentPiece && !isPaused) {
+                const ghost = { ...currentPiece, y: currentPiece.y };
+                while (!collide(grid, ghost, 0, 1)) {
+                    ghost.y++;
+                }
+                ghost.matrix.forEach((row, r) => {
+                    row.forEach((val, c) => {
+                        if (val !== 0) {
+                            drawBlock(mainCtx, ghost.x + c, ghost.y + r, ghost.type, BLOCK_SIZE, true);
+                        }
+                    });
+                });
+
+                // Draw Current Piece
+                currentPiece.matrix.forEach((row, r) => {
+                    row.forEach((val, c) => {
+                        if (val !== 0) {
+                            drawBlock(mainCtx, currentPiece.x + c, currentPiece.y + r, currentPiece.type);
+                        }
+                    });
+                });
+            }
+
+            // Draw Particles
+            updateParticles();
+        }
+
+        function drawPreviews() {
+            // Next Canvas
+            nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+            if (nextPiece) {
+                const m = SHAPES[nextPiece].matrix;
+                const offX = (nextCanvas.width - m[0].length * 16) / 2 / 16;
+                const offY = (nextCanvas.height - m.length * 16) / 2 / 16;
+                m.forEach((row, r) => {
+                    row.forEach((val, c) => {
+                        if (val !== 0) drawBlock(nextCtx, offX + c, offY + r, nextPiece, 16);
+                    });
+                });
+            }
+
+            // Hold Canvas
+            holdCtx.clearRect(0, 0, holdCanvas.width, holdCanvas.height);
+            if (holdPiece) {
+                const m = SHAPES[holdPiece].matrix;
+                const offX = (holdCanvas.width - m[0].length * 16) / 2 / 16;
+                const offY = (holdCanvas.height - m.length * 16) / 2 / 16;
+                m.forEach((row, r) => {
+                    row.forEach((val, c) => {
+                        if (val !== 0) drawBlock(holdCtx, offX + c, offY + r, holdPiece, 16);
+                    });
+                });
+            }
+        }
+
+        function createSparkles(x, y) {
+            const colors = ['#ffb3ba', '#bae1ff', '#ffffba', '#baffc9', '#e8baff'];
+            for (let i = 0; i < 6; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4 - 1,
+                    size: Math.random() * 4 + 2,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: 1,
+                    life: 30
+                });
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 1 / p.life;
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                mainCtx.save();
+                mainCtx.globalAlpha = p.alpha;
+                mainCtx.fillStyle = p.color;
+                mainCtx.beginPath();
+                mainCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                mainCtx.fill();
+                mainCtx.restore();
+            }
+        }
+
+        function update(time = 0) {
+            const deltaTime = time - lastTime;
+            lastTime = time;
+
+            if (!isPaused && !gameOver) {
+                dropCounter += deltaTime;
+                if (dropCounter > dropInterval) {
+                    playerDrop();
+                }
+            }
+
+            drawGrid();
+            requestAnimationFrame(update);
+        }
+
+        function updateUI() {
+            document.getElementById('scoreText').innerText = score;
+            document.getElementById('levelText').innerText = level;
+            document.getElementById('linesText').innerText = lines;
+        }
+
+        function showOverlay(title, sub) {
+            document.getElementById('overlayTitle').innerText = title;
+            document.getElementById('overlaySub').innerText = sub;
+            document.getElementById('overlay').classList.remove('hidden');
+        }
+
+        function hideOverlay() {
+            document.getElementById('overlay').classList.add('hidden');
+        }
+
+        function resetGame() {
+            grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+            score = 0;
+            level = 1;
+            lines = 0;
+            gameOver = false;
+            isPaused = false;
+            dropInterval = 800;
+            nextPiece = getRandomPieceType();
+            currentPiece = createPiece(getRandomPieceType());
+            holdPiece = null;
+            canHold = true;
+            updateUI();
+            drawPreviews();
+            hideOverlay();
+        }
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            sound.init();
+            resetGame();
+        });
+
+        document.getElementById('soundToggle').addEventListener('click', (e) => {
+            sound.enabled = !sound.enabled;
+            e.target.innerText = sound.enabled ? "🔊 SOUND" : "🔇 MUTED";
+        });
+
+        // Key Listeners
+        document.addEventListener('keydown', (e) => {
+            if (gameOver) return;
+            switch(e.key) {
+                case 'ArrowLeft': playerMove(-1); break;
+                case 'ArrowRight': playerMove(1); break;
+                case 'ArrowDown': playerDrop(); break;
+                case 'ArrowUp': playerRotate(); break;
+                case ' ': hardDrop(); e.preventDefault(); break;
+                case 'c': case 'C': doHold(); break;
+            }
+        });
+
+        // Touch Control Listeners
+        document.getElementById('btnLeft').addEventListener('click', () => playerMove(-1));
+        document.getElementById('btnRight').addEventListener('click', () => playerMove(1));
+        document.getElementById('btnDown').addEventListener('click', () => playerDrop());
+        document.getElementById('btnRotate').addEventListener('click', () => playerRotate());
+        document.getElementById('btnDrop').addEventListener('click', () => hardDrop());
+        document.getElementById('btnHold').addEventListener('click', () => doHold());
+
+        // Initialize display
+        drawPreviews();
+        update();
+    </script>
+</body>
+</html>
